@@ -216,7 +216,7 @@ module Avram::Validations
         message: "size greater than #{min} but less than #{max}"
       )
     end
-    
+
     # Handle nil case explicitly
     if attribute.value.nil? && !allow_nil
       if !min.nil? && min > 0
@@ -226,7 +226,7 @@ module Avram::Validations
       end
       return false
     end
-    
+
     validate_range(
       attribute: attribute,
       value: attribute.value,

@@ -139,7 +139,7 @@ module Avram::QueryPerformanceMonitor
       relevant_frame = backtrace.find do |frame|
         !frame.includes?("/avram/") && !frame.includes?("/crystal/")
       end
-      
+
       relevant_frame
     rescue
       nil

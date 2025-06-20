@@ -180,7 +180,7 @@ describe "Avram::Upsert" do
         age: 25,
         joined_at: Time.utc
       )
-      
+
       new_user.id.should_not eq(existing.id)
     end
 

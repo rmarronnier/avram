@@ -52,10 +52,10 @@ module Avram
 
       # Record query performance metrics
       args_array = if event.args
-        [event.args.as(String)]
-      else
-        [] of String
-      end
+                     [event.args.as(String)]
+                   else
+                     [] of String
+                   end
       Avram::QueryPerformanceMonitor::Monitor.handle_metric(
         Avram::QueryPerformanceMonitor::QueryMetric.new(
           query: event.query,
