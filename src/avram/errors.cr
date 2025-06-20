@@ -87,24 +87,44 @@ module Avram
 
     getter connection_details : URI
     getter database_class : Avram::Database.class
+    getter original_error : Exception?
 
-    def initialize(@connection_details : URI, @database_class : Avram::Database.class)
+    def initialize(@connection_details : URI, @database_class : Avram::Database.class, @original_error : Exception? = nil)
       error = String.build do |message|
         message << database_class.name << ": Failed to connect to database '"
         message << connection_details.path.try(&.[1..-1]) << "' with username '"
         message << connection_details.user << "'.\n"
-        message << "Try this..."
-        message << '\n'
+
+        # Add connection details for debugging
+        message << "\nConnection Details:\n"
+        message << "  ▸ Host: " << (connection_details.host || "localhost") << "\n"
+        message << "  ▸ Port: " << (connection_details.port || DEFAULT_PG_PORT) << "\n"
+        message << "  ▸ Database: " << connection_details.path.try(&.[1..-1]) << "\n"
+        message << "  ▸ Username: " << connection_details.user << "\n"
+        message << "  ▸ Password: " << (connection_details.password.blank? ? "[NOT PROVIDED]" : "[PROVIDED]") << "\n"
+
+        if original_error
+          message << "\nOriginal Error:\n"
+          message << "  ▸ " << original_error.message << "\n"
+        end
+
+        message << "\nTry this..."
         message << '\n'
         message << "  ▸ Check connection settings in 'config/database.cr'\n"
         message << "  ▸ Be sure the database exists (lucky db.create)\n"
-        message << "  ▸ Check that you have access to connect to " << connection_details.host
-        message << " on port " << (connection_details.port || DEFAULT_PG_PORT) << "\n"
+        message << "  ▸ Check that PostgreSQL is running on " << (connection_details.host || "localhost")
+        message << " port " << (connection_details.port || DEFAULT_PG_PORT) << "\n"
+        message << "  ▸ Verify your credentials are correct\n"
         message << "  ▸ If this is your first run, create a database named '"
         message << connection_details.user << "' that this same user will have access to\n"
 
         if connection_details.password.blank?
-          message << "  ▸ You didn't supply a password, did you mean to?\n"
+          message << "  ▸ You didn't supply a password - if your database requires one, please provide it\n"
+        end
+
+        # Add environment-specific hints
+        if ENV["DATABASE_URL"]?
+          message << "\nNote: Using DATABASE_URL from environment\n"
         end
       end
 

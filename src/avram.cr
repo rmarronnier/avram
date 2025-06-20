@@ -21,6 +21,7 @@ require "./avram/criteria_extensions/*"
 require "./avram/charms/**"
 require "./avram/migrator/**"
 require "./avram/tasks/**"
+require "./avram/query_performance_monitor"
 require "./avram/**"
 
 module Avram
@@ -48,6 +49,20 @@ module Avram
   def self.initialize_logging : Nil
     Avram::Events::QueryEvent.subscribe do |event, duration|
       next if event.query.starts_with?("TRUNCATE")
+
+      # Record query performance metrics
+      args_array = if event.args
+        [event.args.as(String)]
+      else
+        [] of String
+      end
+      Avram::QueryPerformanceMonitor::Monitor.handle_metric(
+        Avram::QueryPerformanceMonitor::QueryMetric.new(
+          query: event.query,
+          args: args_array,
+          duration: duration
+        )
+      )
 
       Avram::QueryLog.dexter.info do
         queryable = event.queryable

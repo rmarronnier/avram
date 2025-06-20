@@ -8,10 +8,11 @@ end
 
 TestDatabase.configure do |settings|
   settings.credentials = Avram::Credentials.parse?(ENV["DATABASE_URL"]?) || Avram::Credentials.new(
-    hostname: "db",
+    hostname: ENV["DB_HOST"]? || "localhost",
     database: database_name,
-    username: "lucky",
-    password: "developer"
+    username: ENV["DB_USERNAME"]? || "lucky",
+    password: ENV["DB_PASSWORD"]? || "developer",
+    port: (ENV["DB_PORT"]? || "5432").to_i
   )
 end
 
@@ -20,18 +21,20 @@ end
 
 SampleBackupDatabase.configure do |settings|
   settings.credentials = Avram::Credentials.parse?(ENV["BACKUP_DATABASE_URL"]?) || Avram::Credentials.new(
-    hostname: "db",
+    hostname: ENV["DB_HOST"]? || "localhost",
     database: "sample_backup",
-    username: "lucky",
-    password: "developer"
+    username: ENV["DB_USERNAME"]? || "lucky",
+    password: ENV["DB_PASSWORD"]? || "developer",
+    port: (ENV["DB_PORT"]? || "5432").to_i
   )
 end
 
 DatabaseWithIncorrectSettings.configure do |settings|
   settings.credentials = Avram::Credentials.new(
-    hostname: "db",
+    hostname: ENV["DB_HOST"]? || "localhost",
     database: database_name,
-    username: "incorrect"
+    username: "incorrect",
+    port: (ENV["DB_PORT"]? || "5432").to_i
   )
 end
 

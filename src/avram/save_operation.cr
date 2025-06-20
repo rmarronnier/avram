@@ -218,31 +218,45 @@ abstract class Avram::SaveOperation(T)
   def save : Bool
     before_save
 
-    if valid?
-      transaction_committed = write_database.transaction do
-        insert_or_update if !changes.empty? || !persisted?
-        after_save(record.as(T))
-        true
-      end
+    return handle_invalid_save unless valid?
 
-      if transaction_committed
-        self.save_status = OperationStatus::Saved
-        after_commit(record.as(T))
-        Avram::Events::SaveSuccessEvent.publish(
-          operation_class: self.class.name,
-          attributes: generic_attributes
-        )
-        true
-      else
-        mark_as_failed
-        publish_save_failed_event
-        false
-      end
+    transaction_committed = perform_save_transaction
+
+    if transaction_committed
+      handle_successful_save
     else
-      mark_as_failed
-      publish_save_failed_event
-      false
+      handle_failed_save
     end
+  end
+
+  private def handle_invalid_save : Bool
+    mark_as_failed
+    publish_save_failed_event
+    false
+  end
+
+  private def perform_save_transaction : Bool
+    write_database.transaction do
+      insert_or_update if !changes.empty? || !persisted?
+      after_save(record.as(T))
+      true
+    end
+  end
+
+  private def handle_successful_save : Bool
+    self.save_status = OperationStatus::Saved
+    after_commit(record.as(T))
+    Avram::Events::SaveSuccessEvent.publish(
+      operation_class: self.class.name,
+      attributes: generic_attributes
+    )
+    true
+  end
+
+  private def handle_failed_save : Bool
+    mark_as_failed
+    publish_save_failed_event
+    false
   end
 
   def save! : T

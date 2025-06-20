@@ -1,14 +1,14 @@
-FROM crystallang/crystal:1.14.0
+FROM crystallang/crystal:1.16.3
 WORKDIR /data
 
 # install base dependencies
 RUN apt-get update && \
-  apt-get install -y gnupg libgconf-2-4 curl libreadline-dev && \
-  # postgres 11 installation
+  apt-get install -y gnupg curl libreadline-dev lsb-release && \
+  # postgres installation
   curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-  echo "deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main" | tee /etc/apt/sources.list.d/postgres.list && \
+  echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | tee /etc/apt/sources.list.d/postgres.list && \
   apt-get update && \
-  apt-get install -y postgresql-14 && \
+  apt-get install -y postgresql-client-16 && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Lucky cli

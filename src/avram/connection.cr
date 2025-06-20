@@ -16,14 +16,14 @@ class Avram::Connection
 
   def connect_listen(*channels : String, &block : PQ::Notification ->) : Nil
     PG.connect_listen(@connection_string, *channels, &block)
-  rescue DB::ConnectionRefused
-    raise ConnectionError.new(connection_uri, database_class: @database_class)
+  rescue e : DB::ConnectionRefused
+    raise ConnectionError.new(connection_uri, database_class: @database_class, original_error: e)
   end
 
   def try_connection! : DB::Database
     DB.open(@connection_string)
-  rescue DB::ConnectionRefused
-    raise ConnectionError.new(connection_uri, database_class: @database_class)
+  rescue e : DB::ConnectionRefused
+    raise ConnectionError.new(connection_uri, database_class: @database_class, original_error: e)
   end
 
   private def connection_uri : URI

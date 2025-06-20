@@ -1,4 +1,5 @@
 require "./validations/callable_error_message"
+require "./validations/common_helpers"
 
 # A number of methods for validating Avram::Attributes
 # All validation methods return `Bool`. `false` if any error is added, otherwise `true`
@@ -6,6 +7,7 @@ require "./validations/callable_error_message"
 # This module is included in `Avram::Operation`, `Avram::SaveOperation`, and `Avram::DeleteOperation`
 module Avram::Validations
   extend self
+  include Avram::Validations::CommonHelpers
 
   macro included
     abstract def default_validations
@@ -158,20 +160,13 @@ module Avram::Validations
     message : Avram::Attribute::ErrorMessage = Avram.settings.i18n_backend.get(:validate_inclusion_of),
     allow_nil : Bool = false,
   ) : Bool forall T
-    no_errors = true
-    if value = attribute.value
-      if !allowed_values.includes?(value)
-        attribute.add_error(message)
-        no_errors = false
-      end
-    else
-      if !allow_nil
-        attribute.add_error(message)
-        no_errors = false
-      end
-    end
-
-    no_errors
+    validate_value_in_enumerable(
+      attribute: attribute,
+      value: attribute.value,
+      allowed_values: allowed_values,
+      message: message,
+      allow_nil: allow_nil
+    )
   end
 
   # Validate the size of a `String` or `Array` is exactly a certain size
@@ -214,43 +209,35 @@ module Avram::Validations
     message : Avram::Attribute::ErrorMessage? = nil,
     allow_nil : Bool = false,
   ) : Bool forall T
-    no_errors = true
+    # Check for impossible validation first
     if !min.nil? && !max.nil? && min > max
       raise ImpossibleValidation.new(
         attribute: attribute.name,
-        message: "size greater than #{min} but less than #{max}")
+        message: "size greater than #{min} but less than #{max}"
+      )
     end
-
-    unless allow_nil && attribute.value.nil?
-      size = attribute.value.try(&.size) || 0
-
-      if !min.nil? && size < min
-        attribute.add_error(
-          (message || Avram.settings.i18n_backend.get(:validate_min_size_of)) % min
-        )
-        no_errors = false
+    
+    # Handle nil case explicitly
+    if attribute.value.nil? && !allow_nil
+      if !min.nil? && min > 0
+        attribute.add_error((message || Avram.settings.i18n_backend.get(:validate_min_size_of)) % min)
+      elsif !max.nil?
+        attribute.add_error((message || Avram.settings.i18n_backend.get(:validate_max_size_of)) % max)
       end
-
-      if !max.nil? && size > max
-        attribute.add_error(
-          (message || Avram.settings.i18n_backend.get(:validate_max_size_of)) % max
-        )
-        no_errors = false
-      end
+      return false
     end
-
-    no_errors
-  end
-
-  @[Deprecated("Use validate_numeric with at_least/no_more_than instead of greater_than/less_than")]
-  def validate_numeric(
-    attribute : Avram::Attribute(Number),
-    greater_than = nil,
-    less_than = nil,
-    message = nil,
-    allow_nil : Bool = false,
-  ) : Bool
-    validate_numeric(attribute, at_least: greater_than, no_more_than: less_than, message: message, allow_nil: allow_nil)
+    
+    validate_range(
+      attribute: attribute,
+      value: attribute.value,
+      min: min,
+      max: max,
+      min_message: message || Avram.settings.i18n_backend.get(:validate_min_size_of),
+      max_message: message || Avram.settings.i18n_backend.get(:validate_max_size_of),
+      allow_nil: allow_nil
+    ) do |value|
+      value.try(&.size) || 0
+    end
   end
 
   # Validate a number is `at_least` and/or `no_more_than`
@@ -268,40 +255,26 @@ module Avram::Validations
     message = nil,
     allow_nil : Bool = false,
   ) : Bool
-    no_errors = true
-    if at_least && no_more_than && at_least > no_more_than
-      raise ImpossibleValidation.new(
-        attribute: attribute.name,
-        message: "number at least #{at_least} but no more than #{no_more_than}")
-    end
-
-    number = attribute.value
-
-    if number.nil?
-      unless allow_nil
-        attribute.add_error(
-          Avram.settings.i18n_backend.get(:validate_numeric_nil)
-        )
-        no_errors = false
-      end
-      return no_errors
-    end
-
-    if at_least && number < at_least
-      attribute.add_error(
-        (message || Avram.settings.i18n_backend.get(:validate_numeric_min)) % at_least
+    # Special handling for nil numeric values
+    if attribute.value.nil?
+      return handle_nil_value(
+        attribute: attribute,
+        allow_nil: allow_nil,
+        nil_message: Avram.settings.i18n_backend.get(:validate_numeric_nil)
       )
-      no_errors = false
     end
 
-    if no_more_than && number > no_more_than
-      attribute.add_error(
-        (message || Avram.settings.i18n_backend.get(:validate_numeric_max)) % no_more_than
-      )
-      no_errors = false
+    validate_range(
+      attribute: attribute,
+      value: attribute.value,
+      min: at_least,
+      max: no_more_than,
+      min_message: message || Avram.settings.i18n_backend.get(:validate_numeric_min),
+      max_message: message || Avram.settings.i18n_backend.get(:validate_numeric_max),
+      allow_nil: allow_nil
+    ) do |value|
+      value.as(Number)
     end
-
-    no_errors
   end
 
   # Validates that the passed in attributes matches the given regex

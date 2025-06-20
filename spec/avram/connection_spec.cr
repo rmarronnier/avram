@@ -11,7 +11,7 @@ describe Avram::Connection do
 
   it "suggests trying a password when no password supplied and connection fails" do
     conn = Avram::Connection.new("postgres://root@localhost:5432/tacoman", TestDatabase)
-    message = Regex.new("You didn't supply a password, did you mean to?")
+    message = Regex.new("You didn't supply a password - if your database requires one, please provide it")
     expect_raises(Avram::ConnectionError, message) do
       conn.open
     end
